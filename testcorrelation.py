@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 import os
 import scipy.special as sse
-from expfit import model_func, R2,model_fit,fit,correl
+from expfit import model_func, R2,model_fit,fit,correl,model2_fit,model2_func
 from mergeNoise import mergeData
 
 path=r"C:\Users\sylvain.finot\Documents\data\2019-03-22 - T2594 - Rampe\300K\TRCL.dat"
@@ -30,7 +30,7 @@ tmin = max(0,countmax-int(1/binsize))
 tmax = min(countmax+int(5/binsize),binNumber)
 reduced_time = t[tmin:tmax]
 reduced_time = reduced_time - min(reduced_time)
-merge="auto"
+merge=True
 if merge=='auto':
     merge = counts.max() < 5E3
 if merge==True:
@@ -100,23 +100,43 @@ K = popt[1]
 sig = popt[2]
 t0 = popt[3]
 R = R2(fit_time,fit_count,model_func(fit_time,*popt)+baseline)
-ax.plot(fit_time,model_func(fit_time,*popt)+baseline,c='orange',label=r'simple_fit $R^2 =$ %.4f %s $\tau_{eff} =$ %.2e ns %s  $\sigma=$%.2e ns'%(R,'\n',-1/K,'\n',sig))
+ax.plot(model_func(fit_time,*popt)+baseline,c='orange',label=r'simple_fit $R^2 =$ %.4f %s $\tau_{eff} =$ %.2e ns %s  $\sigma=$%.2e ns'%(R,'\n',-1/K,'\n',sig))
 
-
-As=list()
-Ks=list()
+print("------------------model2-------------------")
+init = [A,K,1,1,sig,t0]
+popt,pcov= model2_fit(fit_time,fit_count-baseline,init)
+print(popt)
+print(pcov)
+A1 = popt[0]
+K1 = popt[1]
+A2 = popt[2]
+K2 = popt[3]
+sig = popt[4]
+t0 = popt[5]
+R = R2(fit_count,model2_func(fit_time,*popt)+baseline)
+print(R)
+if R>0.8:
+    taueff = (A1*(-1/K1)+A2*(-1/K2))/(A1+A2)
+    print(taueff)
+    ax.plot(fit_time,model2_func(fit_time,*popt)+baseline,c='red',label=r'double_fit $R^2 =$ %.4f %s$A_{1} =$ %.2e %s$A_{2} =$ %.2e %s$\tau_{1} =$ %.2e ns %s$\tau_{2} =$ %.2e ns %s$\sigma =$ %.2e ns %s$\tau_{eff} =$ %.2e ns'%(R,'\n',A1,'\n',A2,'\n',-1/K1,'\n',-1/K2,'\n',sig,'\n',taueff))
+minR =R
+A1s=list()
+K1s=list()
+A2s=list()
+K2s=list()
 Rs=list()
 fig,bx=plt.subplots()
-for a in np.linspace(A*0.5,A*2,200):
-    for k in np.linspace(K*0.5,K*2,200):
-        popt[0]=a
-        popt[1]=k
-        As.append(a)
-        Ks.append(k)
-        R = R2(fit_time,fit_count,model_func(fit_time,*popt)+baseline)
-        if R > 0.99:
-            ax.plot(fit_time,model_func(fit_time,*popt)+baseline,label=r'$R^2 =$ %.4f %s A =$ %.4f %s $\tau_{eff} =$ %.2e ns'%(R,'\n',a,'\n',-1/k))
+for a1 in np.linspace(A1*0.3,A1*3,200):
+    for a2 in np.linspace(A2*0.3,A2*3,200):
+        popt[0]=a1
+        popt[2]=a2
+        A1s.append(a1)
+        A2s.append(a2)
+        R = R2(fit_time,fit_count,model2_func(fit_time,*popt)+baseline)
+        if R >= minR:
+            ax.plot(fit_time,model2_func(fit_time,*popt)+baseline)#,label=r'$R^2 =$ %.4f %s A =$ %.4f %s $\tau_{eff} =$ %.2e ns'%(R,'\n',a,'\n',-1/k))
         Rs.append(R)
 #ax.legend()
-im=bx.scatter(As,np.array(Ks),c=Rs,cmap='jet',vmin=0.99,vmax=1)
+im=bx.scatter(np.array(A1s),np.array(A2s),c=Rs,cmap='jet',vmin=0.99,vmax=1)
+bx.scatter(A1,A2,c='cyan',marker='*')
 fig.colorbar(im)
