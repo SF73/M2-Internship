@@ -263,11 +263,7 @@ def process_fromFile(path,save=False,autoclose=False,merge=True,fig=None):
     init = [A_lin,K_lin,0.02,t0]
     popt,pcov= model_fit(fit_time,fit_count-baseline,init)
     print(popt)
-    A=popt[0]
-    K = popt[1]
-    sig = popt[2]
-    t0 = popt[3]
-
+    A,K,sig,t0=popt
     R = R2(fit_count,model_func(fit_time,*popt)+baseline)
     Radj = R2adj(len(fit_count),3,fit_count,model_func(fit_time,*popt)+baseline)
     rChi = rChi2(len(fit_count),3,fit_count,model_func(fit_time,*popt)+baseline)
@@ -283,12 +279,7 @@ def process_fromFile(path,save=False,autoclose=False,merge=True,fig=None):
     init = [A,K,1,1,sig,t0]
     popt,pcov= model2_fit(fit_time,fit_count-baseline,init)
     print(popt)
-    A1 = popt[0]
-    K1 = popt[1]
-    A2 = popt[2]
-    K2 = popt[3]
-    sig = popt[4]
-    t0 = popt[5]
+    A1,K1,A2,K2,sig,t0 = popt
     R = R2(fit_count,model2_func(fit_time,*popt)+baseline)
     Radj = R2adj(len(fit_count),3,fit_count,model2_func(fit_time,*popt)+baseline)
     rChi = rChi2(len(fit_count),3,fit_count,model2_func(fit_time,*popt)+baseline)
