@@ -34,7 +34,7 @@ taueffTh = []
 Gamth = np.random.uniform(0,20,4001)
 binsize = 0.004
 t=np.arange(2500)*binsize
-for k in range(10000):
+for k in range(10):
     try:
         print(k/10000)
         size = np.random.randint(0,5)
@@ -96,7 +96,7 @@ for k in range(10000):
         #plt.semilogy(prepared_data[0],convolvedecay(prepared_data[0],*popt),label="After")
         #plt.legend()
         
-        _,_,A1,A2,t1,t2,R=process_fromArray(t,simu_data,show=False)
+        _,_,A1,A2,t1,t2,R=process_fromArray(t,simu_data,show=True)
         if R>0.99:
             s = A1+A2
             K1,K2 = -1/t1,-1/t2

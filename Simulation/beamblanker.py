@@ -41,15 +41,15 @@ for E in np.linspace(-Emax,Emax,100):
 endx = np.asarray(endx)
 xf = np.asarray(xf)
 #if(max(xf)>w):
-ax.vlines(-w/2,d,d+l)
-ax.vlines(+w/2,d,d+l)
+ax.vlines(-w/(2),d,d+l)
+ax.vlines(+w/(2),d,d+l)
 
-beamblankerL = patches.Rectangle((-w/2-2E-6,d),2E-6,l,linewidth=1,edgecolor='green',facecolor='green') 
-beamblankerR = patches.Rectangle((w/2,d),2E-6,l,linewidth=1,edgecolor='green',facecolor='green')
+beamblankerL = patches.Rectangle((-w/(2)-2E-6,d),2E-6,l,linewidth=1,edgecolor='green',facecolor='green') 
+beamblankerR = patches.Rectangle((w/(2),d),2E-6,l,linewidth=1,edgecolor='green',facecolor='green')
 ax.add_patch(beamblankerL)
 ax.add_patch(beamblankerR)
 # Create a Rectangle patch
-sample = patches.Rectangle((-Wsample/2,0),Wsample,Wsample,linewidth=1,edgecolor='r',facecolor='r')
+sample = patches.Rectangle((-Wsample/2,0),Wsample,Wsample*5000,linewidth=1,edgecolor='r',facecolor='r')
 ax.add_patch(sample)
 ax.ticklabel_format(axis='both',style='sci',scilimits=(0,0))
 print('amplitude de deviation : %.2e'%(xf[0]-xf[-1]))

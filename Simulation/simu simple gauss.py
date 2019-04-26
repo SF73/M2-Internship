@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal as signal
 from models import gaussian_heaviside,gaussian_decay,DLT,LT
-from PadeLaplace import prepareData,find_exp_decay
+#from PadeLaplace import prepareData,find_exp_decay
 from scipy.optimize import curve_fit
 from scipy.stats import lognorm, norm
 from stats import R2, R2adj
@@ -32,7 +32,7 @@ Aths = []
 Gamths = []
 taueffTh = []
 Gamth = np.random.uniform(0,20,4001)
-for k in range(10000):
+for k in range(5):
     try:
         print(k/10000)
         binsize = 0.004
@@ -43,7 +43,7 @@ for k in range(10000):
         
 #        Gaussian
         mu = 6#np.random.uniform(4,8)
-        sig = 6/3.5#np.random.uniform(0.5,mu/2.5)
+        sig = np.random.uniform(1,mu/3.5)
         Ath = norm.pdf(Gamth,mu,sig)*(Gamth>0)
         
 ##        lognorm
@@ -97,7 +97,7 @@ for k in range(10000):
         #plt.semilogy(prepared_data[0],convolvedecay(prepared_data[0],*popt),label="After")
         #plt.legend()
         
-        _,_,A1,A2,t1,t2,R=process_fromArray(t,simu_data,show=False)
+        _,_,A1,A2,t1,t2,R=process_fromArray(t,simu_data,show=True)
         if R>0.99:
             s = A1+A2
             K1,K2 = -1/t1,-1/t2

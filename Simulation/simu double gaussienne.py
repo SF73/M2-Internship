@@ -97,7 +97,7 @@ for k in range(20):
         #plt.semilogy(prepared_data[0],convolvedecay(prepared_data[0],*popt),label="After")
         #plt.legend()
         
-        _,_,A1,A2,t1,t2,R=process_fromArray(t,simu_data,show=False)
+        _,_,A1,A2,t1,t2,R=process_fromArray(t,simu_data,show=True)
         if R>0.99:
             s = A1+A2
             K1,K2 = -1/t1,-1/t2
