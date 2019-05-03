@@ -38,7 +38,7 @@ def decay_fit(t,y):
 
 
 def fit(t,y,C=0):
-    y = np.abs(y - C)
+    y = np.abs(y - C)+1e-4
     y = np.log(y)
     t=t-min(t)
     def func(t, A,K,t0):

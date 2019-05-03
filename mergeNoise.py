@@ -28,6 +28,11 @@ def mergeData(time,counts,binsize,name="",show=False):
     tmin = max(0,peaks[0]-int(1/binsize))
     tmax = min(peaks[0]+int(5/binsize),binNumber)
     data0 = counts[tmin:tmax]
+    rightBaseline = np.median(data0[-int(1/binsize):])
+    leftBaseline  = np.median(data0[:int(1/binsize)])
+    baselineError = abs(rightBaseline-leftBaseline)/min(rightBaseline,leftBaseline) > 0.20
+    data = data0
+    c=1
     if len(peaks) < 3: return time[tmin:tmax],data0
     if show:
         fig,ax = plt.subplots()
@@ -35,12 +40,18 @@ def mergeData(time,counts,binsize,name="",show=False):
     for p in peaks[1:]:
         tmin = max(0,p-int(1/binsize))
         tmax = min(p+int(5/binsize),binNumber)
-        data = counts[tmin:tmax]
-        if show:ax.semilogy(data,'.')
-        data0 +=data
+        print(max(np.abs(counts[tmin:tmax]-data0)/data0))
+        diff= np.abs(counts[tmin:tmax]-data0)/data0
+        if baselineError:
+            if np.any(diff>0.20):
+                continue
+        if show:ax.semilogy(counts[tmin:tmax],'.')
+        data += counts[tmin:tmax]
+        c+=1
+#        data0 +=data
         
-    data0 = data0/len(peaks)
+    data = data/c
     if show:
         ax.semilogy(data0,'.')
         ax.set_title(name)
-    return time[tmin:tmax],data0
+    return time[tmin:tmax],data

@@ -14,10 +14,10 @@ l=5E-3 #longueur du beam blanker
 d=20E-2 #distance entre sortie du BB et l'échantillon
 w=100E-6 #entrefer du BB
 Ec = 5E3* cst.electron_volt #energie des electrons
-Emax=700E-3/w/10**(20/10) #champ appliqué
+Emax=700E-3/w#/10**(20/10) #champ appliqué 
 
 Wsample = 2E-6 #taille de l'echantillon
-tm = 1E-9 #temps de montée
+tm = 400E-12 #temps de montée
 
 total_time = (l+d)*np.sqrt(cst.electron_mass/(2*Ec))
 tl = (l)*np.sqrt(cst.electron_mass/(2*Ec)) #temps pour traverser le BB

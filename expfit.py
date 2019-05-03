@@ -67,7 +67,7 @@ def process_fromArray(t,counts,save=False,autoclose=False,merge=True,fig=None,sh
     #calcul de la limite de droite pour fit
     leftl = reduced_counts.argmax()+2
     rightl = 0
-    c=1e-2#np.exp(-1)
+    c=10e-2#np.exp(-1)
     while(rightl<leftl or np.isnan(rightl)):        
         threshold = (max(reduced_counts)-baseline)*c #(max(reduced_counts)-baseline)*np.exp(-3)
         mask = np.convolve(np.sign(reduced_counts-threshold),[-1,1],'same') #detect le chgt de sign de reduced-threshold
@@ -78,7 +78,7 @@ def process_fromArray(t,counts,save=False,autoclose=False,merge=True,fig=None,sh
     t0 = reduced_time[leftl]#temps correspondant au max
     t10 = reduced_time[rightl] - t0
     if show:
-        ax.plot(reduced_time,reduced_counts,'.',c='k',label='data | t%.2d = %.2e'%(np.round((c-0.005)*100),t10))
+        ax.plot(reduced_time,reduced_counts,'.',c='k',label='data | t%.3d = %.2e'%(np.round((c-0.005)*100),t10))
         ax.hlines(reduced_counts[rightl],t0,t0+t10)
     SNR = max(reduced_counts)/baseline
     if show:
@@ -169,12 +169,6 @@ def process_fromArray(t,counts,save=False,autoclose=False,merge=True,fig=None,sh
             plt.close(fig)
     return A,1/K,A1,A2,1/K1,1/K2,R
 def process_fromFile(path,save=False,autoclose=False,merge=True,fig=None):
-#    path = r'C:/Users/sylvain.finot/Documents/data/2019-03-11 - T2597 - 005K/Fil3/TRCL-cw455nm/TRCL.dat'
-#    path = r"C:\Users\sylvain.finot\Documents\data\Probleme TRCL\TRCL_baseline.dat"
-#    path = r"C:\Users\sylvain.finot\Documents\data\Probleme TRCL\TRCL_sync.dat"
-#    path=r"C:\Users\sylvain.finot\Documents\data\2019-03-22 - T2594 - Rampe\300K\TRCL.dat"
-#    path=r'C:/Users/sylvain.finot/Documents/data/2019-03-08 - T2597 - 300K/Fil2/TRCL-L12-5um-cw440nm/TRCL.dat'
-#    path = r"C:\Users\sylvain.finot\Documents\data\2019-03-21 - T2594 - 005K\Fil 3\TRCL 4_-04.42um"
     name = path[path.find('2019'):]
     if len(name)>100:name=''
     if fig is None:
@@ -198,23 +192,30 @@ def process_fromFile(path,save=False,autoclose=False,merge=True,fig=None):
     if merge=='auto':
         merge = counts.max() < 5E3
     if merge==True:
-        reduced_time,reduced_counts = mergeData(t,counts,binsize,name)
+        reduced_time,reduced_counts = mergeData(t,counts,binsize,name,show=False)
     else:
         reduced_time = t[tmin:tmax]
         reduced_counts = counts[tmin:tmax]
     reduced_time = reduced_time - min(reduced_time)
     rightBaseline = np.median(reduced_counts[-int(1/binsize):])
     leftBaseline  = np.median(reduced_counts[:int(1/binsize)])
-    baselineError = abs(rightBaseline-leftBaseline)/rightBaseline > 0.50
-#    ax.plot(reduced_time,reduced_counts,'.',c='k',label='data')
+    baselineError = abs(rightBaseline-leftBaseline)/min(rightBaseline,leftBaseline) > 0.20
+    print("Asymetric baseline : %s" %(str(baselineError)))
     baseline = rightBaseline
-    
+    if baselineError:
+#        reduced_time = t[tmin:tmax]
+#        reduced_counts = counts[tmin:tmax]
+#        reduced_time = reduced_time - min(reduced_time)
+#        rightBaseline = np.median(reduced_counts[-int(1/binsize):])
+#        leftBaseline  = np.median(reduced_counts[:int(1/binsize)])
+#    ax.plot(reduced_time,reduced_counts,'.',c='k',label='data')
+        baseline = min(rightBaseline,leftBaseline)
     #calcul de la limite de droite pour fit
     leftl = reduced_counts.argmax()+2
-    rightl = 0
-    c=1e-2#np.exp(-1)
-    while(rightl<leftl or np.isnan(rightl)):        
-        threshold = (max(reduced_counts)-baseline)*c #(max(reduced_counts)-baseline)*np.exp(-3)
+    rightl = np.nan
+    c=10e-2#np.exp(-1)
+    while(np.isnan(rightl) or rightl<leftl):        
+        threshold = (max(reduced_counts)-baseline)*c+baseline #(max(reduced_counts)-baseline)*np.exp(-3)
         mask = np.convolve(np.sign(reduced_counts-threshold),[-1,1],'same') #detect le chgt de sign de reduced-threshold
         mask[0] = 0
         rightl = np.argmax(mask)
@@ -222,7 +223,7 @@ def process_fromFile(path,save=False,autoclose=False,merge=True,fig=None):
         
     t0 = reduced_time[leftl]#temps correspondant au max
     t10 = reduced_time[rightl] - t0
-    ax.plot(reduced_time,reduced_counts,'.',c='k',label='data | t%.2d = %.2e'%(np.round((c-0.005)*100),t10))
+    ax.plot(reduced_time,reduced_counts,'.',c='k',label='data | t%.3d = %.2e'%(np.round((c-0.005)*100),t10))
     SNR = max(reduced_counts)/baseline
     print("SNR : %.4f"%SNR)
     #Fit exponential decay
@@ -247,63 +248,68 @@ def process_fromFile(path,save=False,autoclose=False,merge=True,fig=None):
     fit_count = reduced_counts[leftl:-300]
     
     #calcul de la limite de gauche
-    c=np.exp(-3)
+    c=10e-2
+    leftl = np.nan
     while(np.isnan(leftl)):        
-        threshold = (max(reduced_counts)-leftBaseline)*c #(max(reduced_counts)-baseline)*np.exp(-3)
+        threshold = (max(reduced_counts)-leftBaseline)*c+leftBaseline #(max(reduced_counts)-baseline)*np.exp(-3)
+        print(threshold)
         mask = np.convolve(np.sign(reduced_counts-threshold),[1,-1],'same') #detect le chgt de sign de reduced-threshold
         mask[0] = 0
         leftl = np.argmax(mask)
         c += 0.01
     
-    print("------------------model1-----------------------")
-    #fit simple exp convoluée avec heaviside
 #    if not baselineError:
-    fit_time = reduced_time[leftl-50:]
-    fit_count = reduced_counts[leftl-50:]
-    init = [A_lin,K_lin,0.02,t0]
-    popt,pcov= model_fit(fit_time,fit_count-baseline,init)
-    print(popt)
-    A,K,sig,t0=popt
-    R = R2(fit_count,model_func(fit_time,*popt)+baseline)
-    Radj = R2adj(len(fit_count),3,fit_count,model_func(fit_time,*popt)+baseline)
-    rChi = rChi2(len(fit_count),3,fit_count,model_func(fit_time,*popt)+baseline)
-#    ax.plot(fit_time,decay_func(fit_time,t0,A_lin,K_lin)+baseline,label=r'decay fit $R^2 =$%.4f%s$\tau_{eff} =$ %.2e ns'%(R,'\n',-1/K_lin))
-    print("R2 : %.4f"%R)
-    print("R2adj : %.4f"%Radj)
-    print("rChi2 : %.4f"%rChi)
-    ax.plot(fit_time,model_func(fit_time,*popt)+baseline,c='orange',label=r'simple_fit $1-R^2 =$ %.2e %s $\tau_{eff} =$ %.2e ns %s  $\sigma=$%.2e ns'%((1-R),'\n',-1/K,'\n',sig))
-
+    fit_time = reduced_time[leftl:]
+    fit_count = reduced_counts[leftl:]
+    try:
+        print("------------------model1-----------------------")
+        #fit simple exp convoluée avec heaviside
+        init = [A_lin,K_lin,0.02,t0]
+        popt,pcov= model_fit(fit_time,fit_count-baseline,init)
+        print(popt)
+        A,K,sig,t0=popt
+        R = R2(fit_count,model_func(fit_time,*popt)+baseline)
+        Radj = R2adj(len(fit_count),3,fit_count,model_func(fit_time,*popt)+baseline)
+        rChi = rChi2(len(fit_count),3,fit_count,model_func(fit_time,*popt)+baseline)
+    #    ax.plot(fit_time,decay_func(fit_time,t0,A_lin,K_lin)+baseline,label=r'decay fit $R^2 =$%.4f%s$\tau_{eff} =$ %.2e ns'%(R,'\n',-1/K_lin))
+        print("R2 : %.4f"%R)
+        print("R2adj : %.4f"%Radj)
+        print("rChi2 : %.4f"%rChi)
+        ax.plot(fit_time,model_func(fit_time,*popt)+baseline,c='orange',label=r'simple_fit $1-R^2 =$ %.2e %s $\tau_{eff} =$ %.2e ns %s  $\sigma=$%.2e ns'%((1-R),'\n',-1/K,'\n',sig))
     
-    
-    print("------------------model2-----------------------")
-    init = [A,K,1,1,sig,t0]
-    popt,pcov= model2_fit(fit_time,fit_count-baseline,init)
-    print(popt)
-    A1,K1,A2,K2,sig,t0 = popt
-    R = R2(fit_count,model2_func(fit_time,*popt)+baseline)
-    Radj = R2adj(len(fit_count),3,fit_count,model2_func(fit_time,*popt)+baseline)
-    rChi = rChi2(len(fit_count),3,fit_count,model2_func(fit_time,*popt)+baseline)
-    print("R2 : %.4f"%R)
-    print("R2adj : %.4f"%Radj)
-    print("rChi2 : %.4f"%rChi)
-    print("A1/A2 : %.4e"%(A1/A2))
-    taueff = (A1*(-1/K1)+A2*(-1/K2))/(A1+A2)
-    print("taueff : %.4e ns"%taueff)
-    if R>0.8:
-        ax.plot(fit_time,model2_func(fit_time,*popt)+baseline,c='red',label=r'double_fit $1-R^2 =$ %.2e %s$A_{1} =$ %.2e %s$A_{2} =$ %.2e %s$\tau_{1} =$ %.2e ns %s$\tau_{2} =$ %.2e ns %s$\sigma =$ %.2e ns %s$\tau_{eff} =$ %.2e ns'%((1-R),'\n',A1,'\n',A2,'\n',-1/K1,'\n',-1/K2,'\n',sig,'\n',taueff))
-    
-    ax.legend()
-    fig.tight_layout()
-    if save==True:  
-        fig.savefig('%s_double_decay.pdf'%os.path.splitext(path)[0])
-        fig.savefig('%s_double_decay.png'%os.path.splitext(path)[0])
+        
+        
+        print("------------------model2-----------------------")
+        init = [A,K,1,1,sig,t0]
+        popt,pcov= model2_fit(fit_time,fit_count-baseline,init)
+        print(popt)
+        A1,K1,A2,K2,sig,t0 = popt
+        R = R2(fit_count,model2_func(fit_time,*popt)+baseline)
+        Radj = R2adj(len(fit_count),3,fit_count,model2_func(fit_time,*popt)+baseline)
+        rChi = rChi2(len(fit_count),3,fit_count,model2_func(fit_time,*popt)+baseline)
+        print("R2 : %.4f"%R)
+        print("R2adj : %.4f"%Radj)
+        print("rChi2 : %.4f"%rChi)
+        print("A1/A2 : %.4e"%(A1/A2))
+        taueff = (A1*(-1/K1)+A2*(-1/K2))/(A1+A2)
+        print("taueff : %.4e ns"%taueff)
+        if R>0.8:
+            ax.plot(fit_time,model2_func(fit_time,*popt)+baseline,c='red',label=r'double_fit $1-R^2 =$ %.2e %s$A_{1} =$ %.2e %s$A_{2} =$ %.2e %s$\tau_{1} =$ %.2e ns %s$\tau_{2} =$ %.2e ns %s$\sigma =$ %.2e ns %s$\tau_{eff} =$ %.2e ns'%((1-R),'\n',A1,'\n',A2,'\n',-1/K1,'\n',-1/K2,'\n',sig,'\n',taueff))
+        
+        ax.legend()
+        fig.tight_layout()
+        if save==True:  
+            fig.savefig('%s_double_decay.pdf'%os.path.splitext(path)[0])
+            fig.savefig('%s_double_decay.png'%os.path.splitext(path)[0])
+            ax.set_yscale('log')
+            fig.savefig('%s_double_decay_log.pdf'%os.path.splitext(path)[0])
+            fig.savefig('%s_double_decay_log.png'%os.path.splitext(path)[0])
+        if autoclose==True:
+            plt.close(fig)
         ax.set_yscale('log')
-        fig.savefig('%s_double_decay_log.pdf'%os.path.splitext(path)[0])
-        fig.savefig('%s_double_decay_log.png'%os.path.splitext(path)[0])
-    if autoclose==True:
-        plt.close(fig)
-    ax.set_yscale('log')
-    return A,1/K,A1,A2,1/K1,1/K2,R
+        return A,1/K,t10,A1,A2,1/K1,1/K2,R
+    except:
+        return 0,0,0,0,0,0,0,0
 def process_all():
     files=getListOfFiles(r'C:/Users/sylvain.finot/Documents/data/')
     mask = [x for x in files if (("TRCL" in x) & (x.endswith(".dat")))]

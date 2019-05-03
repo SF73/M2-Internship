@@ -54,7 +54,7 @@ class manual_Fitter():
         self.ax.ticklabel_format(axis='y',style='sci',scilimits=(0,0))
         self.ax.set_xlabel("t (ns)")
         self.ax.set_ylabel("Intensity (arb. unit)")
-        self.line = self.ax.plot(self.t,self.counts)[0]
+        self.line = self.ax.plot(self.t,self.counts,'.')[0]
         self.span = SpanSelector(self.ax, lambda xmin,xmax:self.onselect(self.line,xmin,xmax), 'horizontal', useblit=True,
                 rectprops=dict(alpha=0.5, facecolor='red'))
         self.fig.canvas.mpl_connect('key_press_event',lambda event: self.on_key_press(event))
@@ -74,7 +74,7 @@ class manual_Fitter():
         rightl = 0
         c=np.exp(-3)
         while(rightl<leftl or np.isnan(rightl)):        
-            threshold = (max(self.fit_counts)-self.baseline)*c #(max(reduced_counts)-baseline)*np.exp(-3)
+            threshold = (max(self.fit_counts)-self.baseline)*c+self.baseline #(max(reduced_counts)-baseline)*np.exp(-3)
             mask = np.convolve(np.sign(self.fit_counts-threshold),[-1,1],'same') #detect le chgt de sign de reduced-threshold
             mask[0] = 0
             rightl = np.argmax(mask)
