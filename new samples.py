@@ -31,7 +31,8 @@ def getListOfFiles(dirName):
 
 fig, (ax,bx) = plt.subplots(1,2)
 markers = itertools.cycle(["o",'D',"s",'h','H','8','*'])
-files=getListOfFiles(r"C:\Users\sylvain.finot\Documents\data")
+#files=getListOfFiles(r"C:\Users\sylvain.finot\Documents\data")
+files=getListOfFiles(r"F:\data")
 # =============================================================================
 # T2628
 mask = [x for x in files if ((("TRCL" in x) & (x.endswith(".dat")))& ("T2628"in x))]
@@ -41,8 +42,8 @@ T10 = list()
 for p in mask:
     idx = p.find('K')
     Temp = int(p[idx-3:idx])
-    A,tau,t10,A1,A2,tau1,tau2,R = process_fromFile(p,save=False,autoclose=False,merge=True)
-    if ((1-R)>1e-3):continue
+    A,tau,t10,A1,A2,tau1,tau2,R = process_fromFile(p,save=True,autoclose=True,merge=True)
+    if ((1-R)>1e-2):continue
     taueff = -(A1*tau1+A2*tau2)/(A1+A2)
     T.append(Temp)
     Tau.append(taueff)
@@ -63,8 +64,8 @@ T10 = list()
 for p in mask:
     idx = p.find('K')
     Temp = int(p[idx-3:idx])
-    A,tau,t10,A1,A2,tau1,tau2,R = process_fromFile(p,save=False,autoclose=False,merge=True)
-    if ((1-R)>1e-3):continue
+    A,tau,t10,A1,A2,tau1,tau2,R = process_fromFile(p,save=True,autoclose=True,merge=True)
+    if ((1-R)>1e-2):continue
     taueff = -(A1*tau1+A2*tau2)/(A1+A2)
     T.append(Temp)
     Tau.append(taueff)
@@ -85,8 +86,8 @@ T10 = list()
 for p in mask:
     idx = p.find('K')
     Temp = int(p[idx-3:idx])
-    A,tau,t10,A1,A2,tau1,tau2,R = process_fromFile(p,save=False,autoclose=False,merge=True)
-    if ((1-R)>1e-3):continue
+    A,tau,t10,A1,A2,tau1,tau2,R = process_fromFile(p,save=True,autoclose=True,merge=True)
+    if ((1-R)>1e-2):continue
     taueff = -(A1*tau1+A2*tau2)/(A1+A2)
     T.append(Temp)
     Tau.append(taueff)
@@ -107,8 +108,8 @@ T10 = list()
 for p in mask:
     idx = p.find('K')
     Temp = int(p[idx-3:idx])
-    A,tau,t10,A1,A2,tau1,tau2,R = process_fromFile(p,save=False,autoclose=False,merge=True)
-    if ((1-R)>1e-3):continue
+    A,tau,t10,A1,A2,tau1,tau2,R = process_fromFile(p,save=True,autoclose=True,merge=True)
+    if ((1-R)>1e-2):continue
     taueff = -(A1*tau1+A2*tau2)/(A1+A2)
     T.append(Temp)
     Tau.append(taueff)

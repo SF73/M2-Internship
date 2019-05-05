@@ -170,9 +170,16 @@ def process_fromArray(t,counts,save=False,autoclose=False,merge=True,fig=None,sh
     return A,1/K,A1,A2,1/K1,1/K2,R
 def process_fromFile(path,save=False,autoclose=False,merge=True,fig=None):
     name = path[path.find('2019'):]
+    
+    if autoclose:
+        plt.ioff()
+    else:
+        plt.ion()
+    
     if len(name)>100:name=''
     if fig is None:
         fig, ax = plt.subplots()
+        fig.patch.set_alpha(0)
         ax.ticklabel_format(axis='y',style='sci',scilimits=(0,0))
         ax.set_xlabel("t (ns)")
         ax.set_ylabel("Intensity (arb. unit)")
@@ -324,7 +331,7 @@ def main():
     path=path.replace('"','')
     path=path.replace("'",'')
 #    path = r'C:/Users/sylvain.finot/Documents/data/2019-03-11 - T2597 - 5K/Fil3/TRCL-cw455nm/TRCL.dat'
-    process_fromFile(path,save=False,autoclose=False,merge=True)
+    process_fromFile(path,save=False,autoclose=False,merge=False)
     
 if __name__ == '__main__':
     main()

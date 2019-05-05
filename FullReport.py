@@ -62,17 +62,22 @@ def process_network():
         time.sleep(30)
 def process_all(path):
     files=getListOfFiles(path)
-    mask = [x for x in files if (("Hyp" in x) & (x.endswith(".dat")))]
+    mask = [x for x in files if (("Hyp" in x) & (x.endswith(".dat"))& ("T2594" in x))]
     print(mask)
-    for p in mask:
+    for i in range(len(mask)):
         try:
-            make_linescan(p,save=True,autoclose=True)
+            make_linescan(mask[i],save=True,autoclose=True)
+            print(100*i/len(mask))
         except:
             pass
         
 def make_linescan(path,save=False,autoclose=False,log=False,threshold=0,deadPixeltol = 2,aspect="auto",EnergyRange = []):
 #    path=r'C:/Users/sylvain.finot/Documents/data/2019-03-08 - T2601 - 300K/Fil2/HYP1-T2601-300K-Vacc5kV-spot7-zoom6000x-gr600-slit0-2-t5ms-Fil1-cw380nm/Hyp.dat'
 #    path = r"C:\Users\sylvain.finot\Documents\data\2019-03-22 - T2594 - Rampe\300K\HYP1-T2594-310K-Vacc5kV-spot7-zoom6000x-gr600-slit0-2-t5ms-cw440nm\Hyp.dat"
+    if autoclose:
+        plt.ioff()
+    else:
+        plt.ion()
     dirname = os.path.dirname(path)
     hyppath = path
     specpath = os.path.join(dirname,'Hyp_X_axis.asc')
@@ -105,6 +110,7 @@ def make_linescan(path,save=False,autoclose=False,log=False,threshold=0,deadPixe
     xscale_CL,yscale_CL,acceleration,image = scaleSEMimage(filepath)
     
     fig,(ax,bx,cx)=plt.subplots(3,1,sharex=True,gridspec_kw={'height_ratios': [1,1, 3]})
+    fig.patch.set_alpha(0) #Transparency style
     fig.subplots_adjust(top=0.98,bottom=0.11,left=0.1,right=0.82,hspace=0.05,wspace=0.05)
     newX = np.linspace(xscale_CL[int(xcoord.min())],xscale_CL[int(xcoord.max())],len(xscale_CL))
     newY = np.linspace(yscale_CL[int(ycoord.min())],yscale_CL[int(ycoord.max())],len(yscale_CL))
@@ -153,12 +159,12 @@ def make_linescan(path,save=False,autoclose=False,log=False,threshold=0,deadPixe
     if autoclose==True:
         plt.close(fig)
 
-def main():
-    path = input("Enter the path of your file: ")
-    path=path.replace('"','')
-    path=path.replace("'",'')
-#    path = r'C:/Users/sylvain.finot/Documents/data/2019-03-11 - T2597 - 5K/Fil3/TRCL-cw455nm/TRCL.dat'
-    make_linescan(path)
-    
-if __name__ == '__main__':
-    main()
+#def main():
+#    path = input("Enter the path of your file: ")
+#    path=path.replace('"','')
+#    path=path.replace("'",'')
+##    path = r'C:/Users/sylvain.finot/Documents/data/2019-03-11 - T2597 - 5K/Fil3/TRCL-cw455nm/TRCL.dat'
+#    make_linescan(path,save=True)
+#    
+#if __name__ == '__main__':
+#    main()
