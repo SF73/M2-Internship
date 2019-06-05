@@ -10,12 +10,12 @@ import matplotlib.pyplot as plt
 import scipy.constants as cst
 import matplotlib.patches as patches
 # definition des variables
-l=5E-3 #longueur du beam blanker
+l=8E-3 #longueur du beam blanker
 d=20E-2 #distance entre sortie du BB et l'échantillon
 w=100E-6 #entrefer du BB
 Ec = 5E3* cst.electron_volt #energie des electrons
-Emax=700E-3/w#/10**(20/10) #champ appliqué 
-
+Emax=2/w#700E-3/w#/10**(20/10) #champ appliqué 
+mirorZ = 15.9e-3
 Wsample = 2E-6 #taille de l'echantillon
 tm = 400E-12 #temps de montée
 
@@ -27,12 +27,16 @@ z=(l+d)-np.sqrt((2*Ec)/cst.electron_mass)*t
 fig,ax = plt.subplots()
 endx = []
 xf = []
-for E in np.linspace(-Emax,Emax,100):
+E_t = np.concatenate((np.repeat(-Emax,1000),np.linspace(-Emax,Emax,500),np.repeat(Emax,1000)))
+for E in np.linspace(-Emax,Emax,1001):
     x1 = -cst.electron_volt*E/(2*cst.electron_mass)*t**2
     x1[t>tl] = 0
-    x2 = -cst.electron_volt*E/cst.electron_mass * tl*(-tl/2+t)
+    x2 = -cst.electron_volt*E/cst.electron_mass * tl*(-tl/2+t)#a revoir
     x2[t<tl]=0
-    x= x1+x2        
+    x= x1+x2
+    if (np.any(abs(x1)>abs(w/2)) or abs(x[np.argmin(abs(z-(mirorZ)))])>250e-6):
+        continue
+    
     ax.plot(x,z,c='k',alpha=0.1)
     endx.append(x[-1])
     #xf = - cst.electron_volt*E/(2*Ec)*l*(l/2+d)
@@ -43,7 +47,7 @@ xf = np.asarray(xf)
 #if(max(xf)>w):
 ax.vlines(-w/(2),d,d+l)
 ax.vlines(+w/(2),d,d+l)
-
+ax.hlines(mirorZ,-250e-6,250e-6)
 beamblankerL = patches.Rectangle((-w/(2)-2E-6,d),2E-6,l,linewidth=1,edgecolor='green',facecolor='green') 
 beamblankerR = patches.Rectangle((w/(2),d),2E-6,l,linewidth=1,edgecolor='green',facecolor='green')
 ax.add_patch(beamblankerL)

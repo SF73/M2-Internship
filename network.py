@@ -39,11 +39,12 @@ def process_all(path):
             pass
     for p in Carto:
         try:
-            make_linescan(p,save=True,autoclose=True)
+            make_linescan(p,save=True,autoclose=False,Linescan=True,deadPixeltol=200)
         except:
             pass          
 def process_network():
-    dirName = r"\\srv-echange\echange\Sylvain"
+#    dirName = r"\\srv-echange\echange\Sylvain"
+    dirName = r'\\srv-echange.grenoble.cnrs.fr\echange\Sylvain'
     while(True):
         print('Processing')
         dirs = os.listdir(dirName)

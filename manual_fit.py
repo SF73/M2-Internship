@@ -51,6 +51,7 @@ class manual_Fitter():
         self.t = np.arange(binNumber)*self.binsize #echelle de temps en ns
         self.shift_is_held = False
         self.fig, self.ax = plt.subplots()
+        self.fig.patch.set_alpha(0)
         self.ax.ticklabel_format(axis='y',style='sci',scilimits=(0,0))
         self.ax.set_xlabel("t (ns)")
         self.ax.set_ylabel("Intensity (arb. unit)")
@@ -71,16 +72,25 @@ class manual_Fitter():
            self.shift_is_held = False
     def process(self):
         leftl = self.fit_counts.argmax()
-        rightl = 0
-        c=np.exp(-3)
+        rightl = np.nan
+        c=10e-2#np.exp(-1)
+
+
         while(rightl<leftl or np.isnan(rightl)):        
             threshold = (max(self.fit_counts)-self.baseline)*c+self.baseline #(max(reduced_counts)-baseline)*np.exp(-3)
             mask = np.convolve(np.sign(self.fit_counts-threshold),[-1,1],'same') #detect le chgt de sign de reduced-threshold
             mask[0] = 0
             rightl = np.argmax(mask)
-            print(rightl)
-            c += 0.01
+            c += 0.005
         t0 = self.fit_time[leftl]
+        t10 = self.fit_time[rightl] - t0
+        print("t10 : %.4e"%t10)
+        SNR = max(self.fit_counts)/self.baseline
+        
+        print("SNR : %.4f"%SNR)
+        
+        
+        
         popt,pcov= fit(self.fit_time[leftl:rightl],self.fit_counts[leftl:rightl],self.baseline)
         A_lin=np.exp(popt[0])
         K_lin = popt[1]

@@ -7,13 +7,18 @@ Created on Mon Mar 11 12:50:23 2019
 
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
+import scipy
 import os
-import scipy.special as sse
 from mergeNoise import mergeData
 from stats import R2,R2adj,rChi2
 from models import *
 
+#plt.rc('font', family='serif',size=12)
+#plt.rc('text', usetex=False)
+#plt.rc('xtick', labelsize=14)
+#plt.rc('ytick', labelsize=14)
+#plt.rc('axes', labelsize=18)
+plt.style.use('Rapport')
 
 def getListOfFiles(dirName):
     # create a list of file and sub directories 
@@ -169,8 +174,10 @@ def process_fromArray(t,counts,save=False,autoclose=False,merge=True,fig=None,sh
             plt.close(fig)
     return A,1/K,A1,A2,1/K1,1/K2,R
 def process_fromFile(path,save=False,autoclose=False,merge=True,fig=None):
+#    path = r"F:\data\2019-03-08 - T2455 - withUL\TRCL-440nm.dat"
     name = path[path.find('2019'):]
-    
+    print('path:')
+    print(path)
     if autoclose:
         plt.ioff()
     else:
@@ -191,13 +198,30 @@ def process_fromFile(path,save=False,autoclose=False,merge=True,fig=None):
     counts = np.loadtxt(path) #Full histogram
     binNumber = int(counts[0]) #Nombre de bin
     binsize = counts[3] #Taille d'un bin
-    counts = counts[-binNumber:] #histogramh
+    counts = counts[-binNumber:] #histogram
+#    counts = counts/max(counts)
     t = np.arange(binNumber)*binsize #echelle de temps en ns
-    countmax = counts[int(1/binsize):binNumber-int(5/binsize)].argsort()[-1]+int(1/binsize)
+
+    #distance la plus courte si on travaille a 100MHz -> 200MHz (montee + descente) -> periode de 5ns
+    #detection si peak est grand de 0.1 max
+    peaks,_ = scipy.signal.find_peaks(counts,height=0.1*max(counts),distance=5/binsize)
+    p1 = np.convolve(peaks,[1,-1],mode='same')[1::2].mean()*binsize
+    p2 = np.convolve(peaks,[1,-1],mode='same')[2::2].mean()*binsize
+    meanfreq = 1e-6/((p1+p2)*1e-9)
+    print("Mean freq : %2.2f"%meanfreq)
+    print("Short period : %2.2f ns"%max(p1,p2))
+    print("Long period : %2.2f ns"%min(p1,p2))
+#    test,testa = plt.subplots()
+#    testa.plot(t,counts)
+#    asymetrie = max(p1,p2)/(p1+p2) - 0.5
+    countmax = counts[int(1/binsize):binNumber-int(5/binsize)].argsort()[-1]#+int(1/binsize)
+#    maxs = np.arange(-5,5)*1e9/efreq + counts[int(1/binsize):binNumber-int(5/binsize)].argmax()*binsize
+#    maxs = maxs[(maxs>=0) & (maxs<t[-1])]
+#    axes[0].plot(maxs,1e4*np.ones(len(maxs)),'D',c='r')
     tmin = max(0,countmax-int(1/binsize))
     tmax = min(countmax+int(5/binsize),binNumber)
     if merge=='auto':
-        merge = counts.max() < 5E3
+        merge = counts.max() < 1E4
     if merge==True:
         reduced_time,reduced_counts = mergeData(t,counts,binsize,name,show=False)
     else:
@@ -209,14 +233,15 @@ def process_fromFile(path,save=False,autoclose=False,merge=True,fig=None):
     baselineError = abs(rightBaseline-leftBaseline)/min(rightBaseline,leftBaseline) > 0.20
     print("Asymetric baseline : %s" %(str(baselineError)))
     baseline = rightBaseline
-    if baselineError:
+#    if baselineError:
 #        reduced_time = t[tmin:tmax]
 #        reduced_counts = counts[tmin:tmax]
 #        reduced_time = reduced_time - min(reduced_time)
 #        rightBaseline = np.median(reduced_counts[-int(1/binsize):])
 #        leftBaseline  = np.median(reduced_counts[:int(1/binsize)])
-#    ax.plot(reduced_time,reduced_counts,'.',c='k',label='data')
-        baseline = min(rightBaseline,leftBaseline)
+#        baseline = rightBaseline
+##    ax.plot(reduced_time,reduced_counts,'.',c='k',label='data')
+#        baseline = min(rightBaseline,leftBaseline)
     #calcul de la limite de droite pour fit
     leftl = reduced_counts.argmax()+2
     rightl = np.nan
@@ -224,13 +249,14 @@ def process_fromFile(path,save=False,autoclose=False,merge=True,fig=None):
     while(np.isnan(rightl) or rightl<leftl):        
         threshold = (max(reduced_counts)-baseline)*c+baseline #(max(reduced_counts)-baseline)*np.exp(-3)
         mask = np.convolve(np.sign(reduced_counts-threshold),[-1,1],'same') #detect le chgt de sign de reduced-threshold
+        print(mask)
         mask[0] = 0
         rightl = np.argmax(mask)
         c += 0.005
         
     t0 = reduced_time[leftl]#temps correspondant au max
     t10 = reduced_time[rightl] - t0
-    ax.plot(reduced_time,reduced_counts,'.',c='k',label='data | t%.3d = %.2e'%(np.round((c-0.005)*100),t10))
+    ax.plot(reduced_time,reduced_counts,'.',c='k',label=r'data | $\tau_{%.2d}$ = %.2e'%(np.round((c-0.005)*100),t10))
     SNR = max(reduced_counts)/baseline
     print("SNR : %.4f"%SNR)
     #Fit exponential decay
@@ -274,6 +300,7 @@ def process_fromFile(path,save=False,autoclose=False,merge=True,fig=None):
         init = [A_lin,K_lin,0.02,t0]
         popt,pcov= model_fit(fit_time,fit_count-baseline,init)
         print(popt)
+        print(pcov)
         A,K,sig,t0=popt
         R = R2(fit_count,model_func(fit_time,*popt)+baseline)
         Radj = R2adj(len(fit_count),3,fit_count,model_func(fit_time,*popt)+baseline)
@@ -290,6 +317,7 @@ def process_fromFile(path,save=False,autoclose=False,merge=True,fig=None):
         init = [A,K,1,1,sig,t0]
         popt,pcov= model2_fit(fit_time,fit_count-baseline,init)
         print(popt)
+        print(pcov)
         A1,K1,A2,K2,sig,t0 = popt
         R = R2(fit_count,model2_func(fit_time,*popt)+baseline)
         Radj = R2adj(len(fit_count),3,fit_count,model2_func(fit_time,*popt)+baseline)
@@ -304,7 +332,7 @@ def process_fromFile(path,save=False,autoclose=False,merge=True,fig=None):
             ax.plot(fit_time,model2_func(fit_time,*popt)+baseline,c='red',label=r'double_fit $1-R^2 =$ %.2e %s$A_{1} =$ %.2e %s$A_{2} =$ %.2e %s$\tau_{1} =$ %.2e ns %s$\tau_{2} =$ %.2e ns %s$\sigma =$ %.2e ns %s$\tau_{eff} =$ %.2e ns'%((1-R),'\n',A1,'\n',A2,'\n',-1/K1,'\n',-1/K2,'\n',sig,'\n',taueff))
         
         ax.legend()
-        fig.tight_layout()
+#        fig.tight_layout()
         if save==True:  
             fig.savefig('%s_double_decay.pdf'%os.path.splitext(path)[0])
             fig.savefig('%s_double_decay.png'%os.path.splitext(path)[0])
@@ -314,15 +342,15 @@ def process_fromFile(path,save=False,autoclose=False,merge=True,fig=None):
         if autoclose==True:
             plt.close(fig)
         ax.set_yscale('log')
-        return A,1/K,t10,A1,A2,1/K1,1/K2,R
+        return A,-1/K,t10,A1,A2,1/K1,1/K2,R
     except:
         return 0,0,0,0,0,0,0,0
-def process_all():
-    files=getListOfFiles(r'C:/Users/sylvain.finot/Documents/data/')
+def process_all(path):
+    files=getListOfFiles(path)
     mask = [x for x in files if (("TRCL" in x) & (x.endswith(".dat")))]
     for p in mask:
         try:
-            process_fromFile(p,save=True,autoclose=True)
+            process_fromFile(p,save=True,autoclose=False)
         except:
             pass
 
@@ -331,7 +359,7 @@ def main():
     path=path.replace('"','')
     path=path.replace("'",'')
 #    path = r'C:/Users/sylvain.finot/Documents/data/2019-03-11 - T2597 - 5K/Fil3/TRCL-cw455nm/TRCL.dat'
-    process_fromFile(path,save=False,autoclose=False,merge=False)
+    process_fromFile(path,save=False,autoclose=False,merge=True)
     
 if __name__ == '__main__':
     main()

@@ -23,6 +23,7 @@ def correct_dead_pixel(hyp,tol=3):
     neighbor_squared_mean = convolve2d(integrated**2, kernel, mode='same',boundary='fill', fillvalue=0)
     std = np.sqrt(neighbor_squared_mean-neighbor_mean**2)
     hot = (abs(integrated-neighbor_mean))>tol*std
+    hotpixels = np.where(hot.flatten()==True)
     mean_hyp = np.copy(hyp)
     for i in range(hyp.shape[2]):    
         mean_hyp[:,:,i] = convolve2d(hyp[:,:,i], kernel, mode='same',boundary='fill', fillvalue=0)
@@ -37,4 +38,4 @@ def correct_dead_pixel(hyp,tol=3):
 #        hot[-1,:] = 0
 #        hot[::,-1] = 0
 #        hot[::,0] = 0
-    return corrected
+    return corrected, hotpixels

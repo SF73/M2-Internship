@@ -1,6 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu May  2 14:39:07 2019
+Created on Wed May 22 14:29:37 2019
+
+@author: Sylvain
+"""
+
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Mar 28 16:19:50 2019
 
 @author: sylvain.finot
 """
@@ -11,6 +18,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import itertools
 import pickle
+
+plt.rc('font', family='serif',size=14)
+plt.rc('text', usetex=False)
+plt.rc('xtick', labelsize=14)
+plt.rc('ytick', labelsize=14)
+plt.rc('axes', labelsize=14)
+
 def getListOfFiles(dirName):
     # create a list of file and sub directories 
     # names in the given directory 
@@ -29,58 +43,35 @@ def getListOfFiles(dirName):
     return allFiles
 
 
-fig, (ax,bx) = plt.subplots(1,2)
+fig, ax = plt.subplots()
 fig.patch.set_alpha(0)
 markers = itertools.cycle(["o",'D',"s",'h','H','8','*'])
-#files=getListOfFiles(r"C:\Users\sylvain.finot\Documents\data")
 files=getListOfFiles(r"F:\data")
 # =============================================================================
-# T2601
-mask = [x for x in files if ((("TRCL" in x) & (x.endswith(".dat")))& ("T2601"in x)& (not ("375nm" in x)))]
+# T2594
+mask = [x for x in files if ((("TRCL" in x) & (x.endswith(".dat")))& ("T2594"in x) & (not ("Rampe"in x)) & (not("Al" in x)) & (not("Ag" in x)))]
 T = list()
 Tau = list()
 T10 = list()
 for p in mask:
     idx = p.find('K')
     Temp = int(p[idx-3:idx])
-    A,tau,t10,A1,A2,tau1,tau2,R = process_fromFile(p,save=False,autoclose=True,merge=True)
+    A,tau,t10,A1,A2,tau1,tau2,R = process_fromFile(p,save=False,autoclose=True,merge=False)
     if ((1-R)>1e-2):continue
     taueff = -(A1*tau1+A2*tau2)/(A1+A2)
     T.append(Temp)
-    Tau.append(taueff)
+    Tau.append(tau)
     T10.append(t10)
 T = np.array(T)
 Tau = np.array(Tau)*1e3
 T10 = np.array(T10)*1e3
 m = next(markers)
-bx.plot(np.repeat(30,len(Tau[T>290])),Tau[T>290],m,alpha=0.6,label='T2601')
-ax.plot(np.repeat(30,len(T10[T>290])),T10[T>290],m,alpha=0.6,label='T2601')
-# =============================================================================
-# =============================================================================
-# T2597
-mask = [x for x in files if ((("TRCL" in x) & (x.endswith(".dat")))& ("T2597"in x))]
-T = list()
-Tau = list()
-T10 = list()
-for p in mask:
-    idx = p.find('K')
-    Temp = int(p[idx-3:idx])
-    A,tau,t10,A1,A2,tau1,tau2,R = process_fromFile(p,save=False,autoclose=True,merge=True)
-    if ((1-R)>1e-2):continue
-    taueff = -(A1*tau1+A2*tau2)/(A1+A2)
-    T.append(Temp)
-    Tau.append(taueff)
-    T10.append(t10)
-T = np.array(T)
-Tau = np.array(Tau)*1e3
-T10 = np.array(T10)*1e3
-m = next(markers)
-bx.plot(np.repeat(20,len(Tau[T>290])),Tau[T>290],m,alpha=0.6,label='T2597')
-ax.plot(np.repeat(20,len(T10[T>290])),T10[T>290],m,alpha=0.6,label='T2597')
+#bx.plot(10*np.ones(len(T10)),T10,m,alpha=0.6,label='T2594')
+ax.plot(T,Tau,m,alpha=0.6,label='T2594 - different wires')
 # =============================================================================
 # =============================================================================
 # T2594
-mask = [x for x in files if ((("TRCL" in x) & (x.endswith(".dat")))& ("T2594"in x) & (not (("Al" in x) or ("Ag" in x))))]
+mask = [x for x in files if ((("TRCL" in x) & (x.endswith(".dat")))& ("T2594"in x) & ("Rampe"in x))]
 T = list()
 Tau = list()
 T10 = list()
@@ -88,29 +79,30 @@ for p in mask:
     idx = p.find('K')
     Temp = int(p[idx-3:idx])
     A,tau,t10,A1,A2,tau1,tau2,R = process_fromFile(p,save=False,autoclose=True,merge=True)
-    if ((1-R)>1e-2):continue
+    if ((1-R)>1e-3):continue
     taueff = -(A1*tau1+A2*tau2)/(A1+A2)
     T.append(Temp)
-    Tau.append(taueff)
+    Tau.append(tau)
     T10.append(t10)
 T = np.array(T)
 Tau = np.array(Tau)*1e3
 T10 = np.array(T10)*1e3
 m = next(markers)
-bx.plot(np.repeat(10,len(Tau[T>290])),Tau[T>290],m,alpha=0.6,label='T2594')
-ax.plot(np.repeat(10,len(T10[T>290])),T10[T>290],m,alpha=0.6,label='T2594')
+ax.plot(T,Tau,m,alpha=0.6,label='T2594 - same wire')
+#ax.plot(T,Tau,m,alpha=0.6,label='T2594 same wire')
+#ax.plot(Tau,T10,m,alpha=0.6,label='T2594 same wire')
 # =============================================================================
 ## =============================================================================
-## T2628
-#mask = [x for x in files if ((("TRCL" in x) & (x.endswith(".dat")))& ("T2628"in x))]
+## T2597
+#mask = [x for x in files if ((("TRCL" in x) & (x.endswith(".dat")))& ("T2597"in x))]
 #T = list()
 #Tau = list()
 #T10 = list()
 #for p in mask:
 #    idx = p.find('K')
 #    Temp = int(p[idx-3:idx])
-#    A,tau,t10,A1,A2,tau1,tau2,R = process_fromFile(p,save=True,autoclose=True,merge=True)
-#    if ((1-R)>1e-2):continue
+#    A,tau,t10,A1,A2,tau1,tau2,R = process_fromFile(p,save=False,autoclose=True,merge=False)
+#    if ((1-R)>1e-3):continue
 #    taueff = -(A1*tau1+A2*tau2)/(A1+A2)
 #    T.append(Temp)
 #    Tau.append(taueff)
@@ -119,20 +111,20 @@ ax.plot(np.repeat(10,len(T10[T>290])),T10[T>290],m,alpha=0.6,label='T2594')
 #Tau = np.array(Tau)*1e3
 #T10 = np.array(T10)*1e3
 #m = next(markers)
-#bx.plot(T[T>100],Tau[T>100],m,alpha=0.6,label='T2628')
-#ax.plot(T[T<100],Tau[T<100],m,alpha=0.6,label='T2628')
+#bx.plot(20*np.ones(len(T10)),T10,m,alpha=0.6,label='T2597')
+#ax.plot(20*np.ones(len(Tau)),Tau,m,alpha=0.6,label='T2597')
 ## =============================================================================
 ## =============================================================================
-## T2631
-#mask = [x for x in files if ((("TRCL" in x) & (x.endswith(".dat")))& ("T2631"in x))]
+## T2601
+#mask = [x for x in files if ((("TRCL" in x) & (x.endswith(".dat")))& ("T2601"in x) & (not ("375nm" in x)))]
 #T = list()
 #Tau = list()
 #T10 = list()
 #for p in mask:
 #    idx = p.find('K')
 #    Temp = int(p[idx-3:idx])
-#    A,tau,t10,A1,A2,tau1,tau2,R = process_fromFile(p,save=True,autoclose=True,merge=True)
-#    if ((1-R)>1e-2):continue
+#    A,tau,t10,A1,A2,tau1,tau2,R = process_fromFile(p,save=False,autoclose=True,merge=False)
+#    if ((1-R)>1e-3):continue
 #    taueff = -(A1*tau1+A2*tau2)/(A1+A2)
 #    T.append(Temp)
 #    Tau.append(taueff)
@@ -141,59 +133,62 @@ ax.plot(np.repeat(10,len(T10[T>290])),T10[T>290],m,alpha=0.6,label='T2594')
 #Tau = np.array(Tau)*1e3
 #T10 = np.array(T10)*1e3
 #m = next(markers)
-#bx.plot(T[T>100],Tau[T>100],m,alpha=0.6,label='T2631')
-#ax.plot(T[T<100],Tau[T<100],m,alpha=0.6,label='T2631')
-## =============================================================================
-## =============================================================================
-## T2629
-#mask = [x for x in files if ((("TRCL" in x) & (x.endswith(".dat")))& ("T2629"in x))]
-#T = list()
-#Tau = list()
-#T10 = list()
-#for p in mask:
-#    idx = p.find('K')
-#    Temp = int(p[idx-3:idx])
-#    A,tau,t10,A1,A2,tau1,tau2,R = process_fromFile(p,save=True,autoclose=True,merge=True)
-#    if ((1-R)>1e-2):continue
-#    taueff = -(A1*tau1+A2*tau2)/(A1+A2)
-#    T.append(Temp)
-#    Tau.append(taueff)
-#    T10.append(t10)
-#T = np.array(T)
-#Tau = np.array(Tau)*1e3
-#T10 = np.array(T10)*1e3
-#m = next(markers)
-#bx.plot(T[T>100],Tau[T>100],m,alpha=0.6,label='T2629')
-#ax.plot(T[T<100],Tau[T<100],m,alpha=0.6,label='T2629')
-## =============================================================================
-## =============================================================================
-## T2630
-#mask = [x for x in files if ((("TRCL" in x) & (x.endswith(".dat")))& ("T2630"in x))]
-#T = list()
-#Tau = list()
-#T10 = list()
-#for p in mask:
-#    idx = p.find('K')
-#    Temp = int(p[idx-3:idx])
-#    A,tau,t10,A1,A2,tau1,tau2,R = process_fromFile(p,save=True,autoclose=True,merge=True)
-#    if ((1-R)>1e-2):continue
-#    taueff = -(A1*tau1+A2*tau2)/(A1+A2)
-#    T.append(Temp)
-#    Tau.append(taueff)
-#    T10.append(t10)
-#T = np.array(T)
-#Tau = np.array(Tau)*1e3
-#T10 = np.array(T10)*1e3
-#m = next(markers)
-#bx.plot(T[T>100],Tau[T>100],m,alpha=0.6,label='T2630')
-#ax.plot(T[T<100],Tau[T<100],m,alpha=0.6,label='T2630')
+#ax.plot(30*np.ones(len(Tau)),Tau,m,alpha=0.6,label='T2601')
+#bx.plot(30*np.ones(len(T10)),T10,m,alpha=0.6,label='T2601')
 ## =============================================================================
 
 
-ax.set_xlabel("Temperature (K)")
+## T2594 Al
+#mask = [x for x in files if ((("TRCL" in x) & (x.endswith(".dat")))& ("T2594"in x) & (not ("Rampe"in x)) & ("Al" in x))]
+#T = list()
+#Tau = list()
+#T10 = list()
+#for p in mask:
+#    idx = p.find('K')
+#    Temp = int(p[idx-3:idx])
+#    A,tau,t10,A1,A2,tau1,tau2,R = process_fromFile(p,save=False,autoclose=True,merge=True)
+#    if ((1-R)>1e-2):continue
+#    taueff = -(A1*tau1+A2*tau2)/(A1+A2)
+#    T.append(Temp)
+#    Tau.append(taueff)
+#    T10.append(t10)
+#T = np.array(T)
+#Tau = np.array(Tau)*1e3
+#T10 = np.array(T10)*1e3
+#m = next(markers)
+#bx.plot(T,T10,m,alpha=0.6,label='T2594 Al')
+#ax.plot(T,Tau,m,alpha=0.6,label='T2594 Al')
+#
+## T2594 Ag
+#mask = [x for x in files if ((("TRCL" in x) & (x.endswith(".dat")))& ("T2594"in x) & (not ("Rampe"in x)) & ("Ag" in x))]
+#T = list()
+#Tau = list()
+#T10 = list()
+#for p in mask:
+#    idx = p.find('K')
+#    Temp = int(p[idx-3:idx])
+#    A,tau,t10,A1,A2,tau1,tau2,R = process_fromFile(p,save=False,autoclose=True,merge=True)
+#    if ((1-R)>1e-2):continue
+#    taueff = -(A1*tau1+A2*tau2)/(A1+A2)
+#    T.append(Temp)
+#    Tau.append(taueff)
+#    T10.append(t10)
+#
+#T = np.array(T)
+#Tau = np.array(Tau)*1e3
+#T10 = np.array(T10)*1e3
+#m = next(markers)
+#ax.plot(T,Tau,m,alpha=0.6,label='T2594 Ag')
+#bx.plot(T,T10,m,alpha=0.6,label='T2594 Ag')
+
+
+
+ax.set_xlabel(r"T (K)")
 ax.set_ylabel(r"$\tau$ (ps)")
-ax.legend()
+#ax.legend()
+#
+#bx.set_xlabel("Temperature (K)")
+#bx.set_ylabel(r"$\tau_{10}$ (ps)")
+#bx.legend()
 
-bx.set_xlabel("Temperature (K)")
-bx.set_ylabel(r"$\tau$ (ps)")
-bx.legend()
+plt.show()

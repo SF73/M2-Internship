@@ -10,7 +10,12 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import os.path
 import time
+import scipy.constants as cst
+eV_To_nm = cst.c*cst.h/cst.e*1E9
 from detect_dead_pixels import correct_dead_pixel
+
+plt.style.use('Rapport')
+plt.rc('axes', labelsize=16)
 def  scaleSEMimage(file):
 
     with open(file,'r',encoding="Latin-1") as myfile:
@@ -62,23 +67,38 @@ def process_network():
         time.sleep(30)
 def process_all(path):
     files=getListOfFiles(path)
-    mask = [x for x in files if (("Hyp" in x) & (x.endswith(".dat"))& ("T2594" in x))]
+    mask = [x for x in files if (("Hyp" in x) & (x.endswith(".dat")))]
     print(mask)
     for i in range(len(mask)):
         try:
-            make_linescan(mask[i],save=True,autoclose=True)
+            make_linescan(mask[i],save=True,deadPixeltol=200,autoclose=True,Linescan=True)
             print(100*i/len(mask))
-        except:
+        except Exception as e:
+            print(e)
             pass
         
-def make_linescan(path,save=False,autoclose=False,log=False,threshold=0,deadPixeltol = 2,aspect="auto",EnergyRange = []):
+def make_linescan(path,save=False,autoclose=False,log=False,threshold=0,deadPixeltol = 2,aspect="auto",EnergyRange = [],normalise=False,Linescan=False):
 #    path=r'C:/Users/sylvain.finot/Documents/data/2019-03-08 - T2601 - 300K/Fil2/HYP1-T2601-300K-Vacc5kV-spot7-zoom6000x-gr600-slit0-2-t5ms-Fil1-cw380nm/Hyp.dat'
 #    path = r"C:\Users\sylvain.finot\Documents\data\2019-03-22 - T2594 - Rampe\300K\HYP1-T2594-310K-Vacc5kV-spot7-zoom6000x-gr600-slit0-2-t5ms-cw440nm\Hyp.dat"
+#    path=r'C:/Users/sylvain.finot/Documents/data/2019-04-29 - T2594 Al - 300K/Fil 2/HYP-T2594Al-300K-Vacc5kV-spot5-zoom10000x-gr600-slit0-2-t005ms-cw450nm/Hyp.dat'
+#    path=r'F:/data/2019-05-16 - T2455 Al - 300K/FULLSCREEN HYP2-T2455-300K-Vacc5kV-spot5-zoom8000x-gr600-slit0-2-t005ms-cw440nm/Hyp.dat'
     if autoclose:
         plt.ioff()
     else:
         plt.ion()
     dirname = os.path.dirname(path)
+    try:
+        infos = os.path.basename(dirname).split("-")
+        T = '' if not [x for x in infos if ('K' in x)] else [x for x in infos if ('K' in x)][0]
+        Sample = infos[1]
+        wire = '' if not [x for x in infos if ('fil' in x.lower())] else [x for x in infos if ('fil' in x.lower())][0]
+        if not wire:
+            wire = os.path.basename(os.path.dirname(dirname))
+        wire = wire.lower().replace('fil','Wire')
+    except:
+        T=''
+        Sample = ''
+        wire = ''
     hyppath = path
     specpath = os.path.join(dirname,'Hyp_X_axis.asc')
     filepath = os.path.join(dirname,'Hyp_SEM image after carto.tif')
@@ -94,8 +114,9 @@ def make_linescan(path,save=False,autoclose=False,log=False,threshold=0,deadPixe
     
     
     #correct dead / wrong pixels
-    hypSpectrum = correct_dead_pixel(hypSpectrum,tol=deadPixeltol)
-    
+    hypSpectrum, hotpixels = correct_dead_pixel(hypSpectrum,tol=deadPixeltol)
+#    print("Hot pixels :")
+#    print(hotpixels)
     #reduce the spectrum if wanted
     if len(EnergyRange)==2:
         lidx = np.argmin(np.abs(wavelenght-EnergyRange[0]))
@@ -103,15 +124,17 @@ def make_linescan(path,save=False,autoclose=False,log=False,threshold=0,deadPixe
         wavelenght = wavelenght[lidx:ridx]
         hypSpectrum = hypSpectrum[:,:,lidx:ridx]
     
-    average_axis = 0 #1 on moyenne le long du fil, 0 transversalement
-    
-    linescan = np.sum(hypSpectrum,axis=average_axis)
+    linescan = np.sum(hypSpectrum,axis=0)
+    if normalise:
+        linescan = linescan/np.max(linescan,axis=1,keepdims=True)
 #    linescan -= linescan.min()
     xscale_CL,yscale_CL,acceleration,image = scaleSEMimage(filepath)
-    
-    fig,(ax,bx,cx)=plt.subplots(3,1,sharex=True,gridspec_kw={'height_ratios': [1,1, 3]})
+    if Linescan:
+        fig,(ax,bx,cx)=plt.subplots(3,1,sharex=True,gridspec_kw={'height_ratios': [1,1, 3]})
+    else:
+        fig,(ax,bx,cx)=plt.subplots(3,1,sharex=True,sharey=True)
     fig.patch.set_alpha(0) #Transparency style
-    fig.subplots_adjust(top=0.98,bottom=0.11,left=0.1,right=0.82,hspace=0.05,wspace=0.05)
+    fig.subplots_adjust(top=0.9,bottom=0.12,left=0.15,right=0.82,hspace=0.1,wspace=0.05)
     newX = np.linspace(xscale_CL[int(xcoord.min())],xscale_CL[int(xcoord.max())],len(xscale_CL))
     newY = np.linspace(yscale_CL[int(ycoord.min())],yscale_CL[int(ycoord.max())],len(yscale_CL))
     nImage = np.array(image.crop((xcoord.min(),ycoord.min(),xcoord.max(),ycoord.max())))
@@ -125,20 +148,17 @@ def make_linescan(path,save=False,autoclose=False,log=False,threshold=0,deadPixe
         hypimage=np.log10(hypimage+1)
         linescan = np.log10(linescan+1)
     lumimage = bx.imshow(hypimage,cmap='jet',extent=[np.min(newX),np.max(newX),np.max(newY),np.min(newY)])
-    if average_axis==1:
-        #pas utilise pour le moment
-        extent = [1239.842/wavelenght.max(),1239.842/wavelenght.min(),np.max(newY),np.min(newY)]
-        im=bx.imshow(linescan,cmap='jet',extent=extent)
-        cx.set_xlabel("energy (eV)")
-        cx.set_ylabel("distance (µm)")
-    else:
-        #par defaut
-        extent = [np.min(newX),np.max(newX),1239.842/wavelenght.max(),1239.842/wavelenght.min()]
+    if Linescan:
+        extent = [np.min(newX),np.max(newX),eV_To_nm/wavelenght.max(),eV_To_nm/wavelenght.min()]
         im=cx.imshow(linescan.T,cmap='jet',extent=extent)
         cx.set_ylabel("Energy (eV)")
         cx.set_xlabel("distance (µm)")
-
-    cx.set_aspect('auto')
+        cx.set_aspect('auto')
+    else:
+        im = cx.imshow(wavelenght[np.argmax(hypSpectrum,axis=2)],cmap='viridis',extent=[np.min(newX),np.max(newX),np.max(newY),np.min(newY)])    
+#        cx.set_ylabel("Energy (eV)")
+#        cx.set_xlabel("distance (µm)")
+        cx.set_aspect(aspect)
     bx.set_aspect(aspect)
     ax.set_aspect(aspect)
     ax.get_shared_y_axes().join(ax, bx)
@@ -155,16 +175,20 @@ def make_linescan(path,save=False,autoclose=False,log=False,threshold=0,deadPixe
         savedir = os.path.join(dirname,'Saved')
         if not os.path.exists(savedir):
             os.mkdir(savedir)
-        fig.savefig(os.path.join(dirname,'Saved','SEM+Hyp+Linescan.png'),dpi=300)
+        savename = 'SEM+Hyp+Linescan'
+        if ((len(T)>0) & (len(Sample)>0) & (len(wire)>0)):
+            savename='%s_%s_%s_%s'%(savename,Sample,T,wire)
+        fig.savefig(os.path.join(dirname,'Saved',savename+".png"),dpi=300)
+            
     if autoclose==True:
         plt.close(fig)
 
-#def main():
-#    path = input("Enter the path of your file: ")
-#    path=path.replace('"','')
-#    path=path.replace("'",'')
-##    path = r'C:/Users/sylvain.finot/Documents/data/2019-03-11 - T2597 - 5K/Fil3/TRCL-cw455nm/TRCL.dat'
-#    make_linescan(path,save=True)
-#    
-#if __name__ == '__main__':
-#    main()
+def main():
+    path = input("Enter the path of your file: ")
+    path=path.replace('"','')
+    path=path.replace("'",'')
+#    path = r'C:/Users/sylvain.finot/Documents/data/2019-03-11 - T2597 - 5K/Fil3/TRCL-cw455nm/TRCL.dat'
+    make_linescan(path,save=False,deadPixeltol=200,normalise=False,Linescan=True)
+    
+if __name__ == '__main__':
+    main()
