@@ -12,32 +12,14 @@ import os
 from mergeNoise import mergeData
 from stats import R2,R2adj,rChi2
 from models import *
-
+from FileHelper import getListOfFiles
+#from batchProcessing import getListOfFiles
 #plt.rc('font', family='serif',size=12)
 #plt.rc('text', usetex=False)
 #plt.rc('xtick', labelsize=14)
 #plt.rc('ytick', labelsize=14)
 #plt.rc('axes', labelsize=18)
 plt.style.use('Rapport')
-
-def getListOfFiles(dirName):
-    # create a list of file and sub directories 
-    # names in the given directory 
-    listOfFile = os.listdir(dirName)
-    allFiles = list()
-    # Iterate over all the entries
-    for entry in listOfFile:
-        # Create full path
-        fullPath = os.path.join(dirName, entry)
-        # If entry is a directory then get the list of files in this directory 
-        if os.path.isdir(fullPath):
-            allFiles = allFiles + getListOfFiles(fullPath)
-        else:
-            allFiles.append(fullPath)
-                
-    return allFiles
-
-
 
 def process_fromArray(t,counts,save=False,autoclose=False,merge=True,fig=None,show=False):
     binsize = t[1]-t[0]
@@ -173,6 +155,7 @@ def process_fromArray(t,counts,save=False,autoclose=False,merge=True,fig=None,sh
         if autoclose==True:
             plt.close(fig)
     return A,1/K,A1,A2,1/K1,1/K2,R
+
 def process_fromFile(path,save=False,autoclose=False,merge=True,fig=None):
 #    path = r"F:\data\2019-03-08 - T2455 - withUL\TRCL-440nm.dat"
     name = path[path.find('2019'):]
@@ -193,7 +176,6 @@ def process_fromFile(path,save=False,autoclose=False,merge=True,fig=None):
         ax.set_title("Carrier lifetime : %s"%name)
     else:
         ax = fig.gca()
-    
     
     counts = np.loadtxt(path) #Full histogram
     binNumber = int(counts[0]) #Nombre de bin

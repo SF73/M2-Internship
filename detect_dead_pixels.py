@@ -27,7 +27,7 @@ def correct_dead_pixel(hyp,tol=3):
     mean_hyp = np.copy(hyp)
     for i in range(hyp.shape[2]):    
         mean_hyp[:,:,i] = convolve2d(hyp[:,:,i], kernel, mode='same',boundary='fill', fillvalue=0)
-    mask = hot[:,:,np.newaxis].repeat(2048,2)
+    mask = hot[:,:,np.newaxis].repeat(hyp.shape[2],2)
     corrected = hyp*(1-mask)+mean_hyp*mask
 #    for i in range(hyp.shape[2]):    
 #        neighbor_mean = convolve2d(hyp[:,:,i], kernel, mode='same',boundary='fill', fillvalue=0)

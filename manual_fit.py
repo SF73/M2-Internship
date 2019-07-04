@@ -16,30 +16,13 @@ Created on Mon Mar 11 12:50:23 2019
 
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
+import scipy
 import os
-import scipy.special as sse
-from matplotlib.widgets import SpanSelector
 from mergeNoise import mergeData
 from stats import R2,R2adj,rChi2
 from models import *
+from batchProcessing import getListOfFiles
 
-def getListOfFiles(dirName):
-    # create a list of file and sub directories 
-    # names in the given directory 
-    listOfFile = os.listdir(dirName)
-    allFiles = list()
-    # Iterate over all the entries
-    for entry in listOfFile:
-        # Create full path
-        fullPath = os.path.join(dirName, entry)
-        # If entry is a directory then get the list of files in this directory 
-        if os.path.isdir(fullPath):
-            allFiles = allFiles + getListOfFiles(fullPath)
-        else:
-            allFiles.append(fullPath)
-                
-    return allFiles
 
 class manual_Fitter():
     def __init__(self,path):
