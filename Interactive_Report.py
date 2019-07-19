@@ -31,25 +31,25 @@ def process_all(path):
             pass
         
         
-#class MyMultiCursor(MultiCursor):
-#    def __init__(self, canvas, axes, useblit=True, horizOn=[], vertOn=[], **lineprops):
-#        super(MyMultiCursor, self).__init__(canvas, axes, useblit=useblit, horizOn=False, vertOn=False, **lineprops)
-#
-#        self.horizAxes = horizOn
-#        self.vertAxes = vertOn
-#
-#        if len(horizOn) > 0:
-#            self.horizOn = True
-#        if len(vertOn) > 0:
-#            self.vertOn = True
-#
-#        xmin, xmax = axes[-1].get_xlim()
-#        ymin, ymax = axes[-1].get_ylim()
-#        xmid = 0.5 * (xmin + xmax)
-#        ymid = 0.5 * (ymin + ymax)
-#
-#        self.vlines = [ax.axvline(xmid, visible=True, **lineprops) for ax in self.vertAxes]
-#        self.hlines = [ax.axhline(ymid, visible=True, **lineprops) for ax in self.horizAxes]
+class MyMultiCursor(MultiCursor):
+    def __init__(self, canvas, axes, useblit=True, horizOn=[], vertOn=[], **lineprops):
+        super(MyMultiCursor, self).__init__(canvas, axes, useblit=useblit, horizOn=False, vertOn=False, **lineprops)
+
+        self.horizAxes = horizOn
+        self.vertAxes = vertOn
+
+        if len(horizOn) > 0:
+            self.horizOn = True
+        if len(vertOn) > 0:
+            self.vertOn = True
+
+        xmin, xmax = axes[-1].get_xlim()
+        ymin, ymax = axes[0].get_ylim()
+        xmid = 0.5 * (xmin + xmax)
+        ymid = 0.5 * (ymin + ymax)
+
+        self.vlines = [ax.axvline(xmid, visible=True, **lineprops) for ax in self.vertAxes]
+        self.hlines = [ax.axhline(ymid, visible=True, **lineprops) for ax in self.horizAxes]
         
 def make_linescan(path,save=False,autoclose=False,log=False,threshold=0,deadPixeltol = 2,aspect="auto",EnergyRange = [],normalise=False,Linescan=False):
 #    path=r'D:/M2 Internship/data/2019-03-08 - T2601 - 300K/Fil2/HYP1-T2601-300K-Vacc5kV-spot7-zoom6000x-gr600-slit0-2-t5ms-Fil1-cw440nm/Hyp.dat'
@@ -60,7 +60,8 @@ def make_linescan(path,save=False,autoclose=False,log=False,threshold=0,deadPixe
         plt.ioff()
     else:
         plt.ion()
-    dirname = os.path.dirname(path)
+    dirname,filename = os.path.split(path)
+    filename, ext = os.path.splitext(filename)
     try:
         infos = os.path.basename(dirname).split("-")
         T = '' if not [x for x in infos if ('K' in x)] else [x for x in infos if ('K' in x)][0]
@@ -74,8 +75,8 @@ def make_linescan(path,save=False,autoclose=False,log=False,threshold=0,deadPixe
         Sample = ''
         wire = ''
     hyppath = path
-    specpath = os.path.join(dirname,'Hyp_X_axis.asc')
-    filepath = os.path.join(dirname,'Hyp_SEM image after carto.tif')
+    specpath = os.path.join(dirname,filename+'_X_axis.asc')
+    filepath = os.path.join(dirname,filename+'_SEM image after carto.tif')
     data = np.loadtxt(hyppath)
     xlen = int(data[0,0])   #nbr de pts selon x
     ylen = int(data[1,0])   #nbr de pts selon y
@@ -124,7 +125,8 @@ def make_linescan(path,save=False,autoclose=False,log=False,threshold=0,deadPixe
         linescan = np.log10(linescan+1)
     lumimage = bx.imshow(hypimage,cmap='jet',extent=[np.min(newX),np.max(newX),np.max(newY),np.min(newY)])
     if Linescan:
-        im=cx.imshow(linescan.T,cmap='jet',extent=[np.min(newX),np.max(newX),eV_To_nm/wavelenght.max(),eV_To_nm/wavelenght.min()])
+#        im=cx.imshow(linescan.T,cmap='jet',extent=[np.min(newX),np.max(newX),eV_To_nm/wavelenght.max(),eV_To_nm/wavelenght.min()])
+        im=cx.pcolormesh(np.linspace(np.min(newX),np.max(newX),hypSpectrum.shape[1]),eV_To_nm/wavelenght,linescan.T,cmap='jet')
         cx.set_ylabel("Energy (eV)")
         cx.set_xlabel("distance (µm)")
         cx.set_aspect('auto')
@@ -160,8 +162,10 @@ def make_linescan(path,save=False,autoclose=False,log=False,threshold=0,deadPixe
         return None
     else:
         spec_fig, spec_ax = plt.subplots()
-        spec_data, = spec_ax.plot(wavelenght,np.zeros(wavelenght.shape[0]))
-        multi = Cursor(bx, color='r',lw=1,useblit=True)#, lw=1, horizOn=[ax,bx], vertOn=[ax,bx,cx])
+        spec_data, = spec_ax.plot(eV_To_nm/wavelenght,np.zeros(wavelenght.shape[0]))
+        if Linescan:    
+            multi = MyMultiCursor(fig.canvas,(ax, bx,cx), color='r',lw=1,horizOn=[ax,bx], vertOn=[ax,bx,cx],useblit=True)#, lw=1, horizOn=[ax,bx], vertOn=[ax,bx,cx])
+#            multi = Cursor(bx, color='r',lw=1,useblit=True)#, lw=1, horizOn=[ax,bx], vertOn=[ax,bx,cx])
         def onclick(event):
             x = event.xdata
             y = event.ydata
@@ -169,18 +173,20 @@ def make_linescan(path,save=False,autoclose=False,log=False,threshold=0,deadPixe
             indy=np.argmin(abs(y-convY))
 #            spec_data.set_xdata(
             spec_data.set_ydata(hypSpectrum[indy,indx])
-            spec_ax.autoscale()
+            spec_ax.relim()
+            spec_ax.autoscale_view(scalex=False)
             spec_fig.canvas.draw_idle()
             plt.draw()
         fig.canvas.mpl_connect('button_press_event', onclick)
-        return multi
+        return spec_fig, spec_ax, multi
 
 def main():
     path = input("Enter the path of your file: ")
     path=path.replace('"','')
     path=path.replace("'",'')
+    global spec_fig,spec_ax,cursor
 #    path = r'C:/Users/sylvain.finot/Documents/data/2019-03-11 - T2597 - 5K/Fil3/TRCL-cw455nm/TRCL.dat'
-    test = make_linescan(path,save=False,deadPixeltol=200,normalise=False,Linescan=True)
+    cursor = make_linescan(path,save=False,deadPixeltol=200,normalise=False,Linescan=True)
     
 if __name__ == '__main__':
     main()
