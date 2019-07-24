@@ -7,8 +7,10 @@ Created on Tue Mar 19 13:57:46 2019
 
 import numpy as np
 import matplotlib.pyplot as plt
-import os.path
-import time
+from matplotlib.colors import LogNorm
+#import os.path
+import os
+#import psutil
 import scipy.constants as cst
 eV_To_nm = cst.c*cst.h/cst.e*1E9
 from detect_dead_pixels import correct_dead_pixel
@@ -28,6 +30,7 @@ def process_all(path):
         except Exception as e:
             print(e)
             pass
+
 def make_linescan(path,save=False,autoclose=False,log=False,threshold=0,deadPixeltol = 2,aspect="auto",EnergyRange = [],normalise=False,Linescan=False):
 #    path=r'D:/M2 Internship/data/2019-03-08 - T2601 - 300K/Fil2/HYP1-T2601-300K-Vacc5kV-spot7-zoom6000x-gr600-slit0-2-t5ms-Fil1-cw380nm/Hyp.dat'
 #    path = r"D:/M2 Internship/data\2019-03-22 - T2594 - Rampe\300K\HYP1-T2594-310K-Vacc5kV-spot7-zoom6000x-gr600-slit0-2-t5ms-cw440nm\Hyp.dat"
@@ -62,8 +65,11 @@ def make_linescan(path,save=False,autoclose=False,log=False,threshold=0,deadPixe
     xcoord = data[0,1:]
     ycoord = data[1,1:]
     CLdata = data[2:,1:] #tableau de xlen * ylen points (espace) et 2048 longueur d'onde CLdata[:,n] n = numero du spectr
-    hypSpectrum = np.transpose(np.reshape(np.transpose(CLdata),(ylen,xlen ,len(wavelenght))), (0, 1, 2))
     
+    # hypSpectrum[y,x,spec]
+    hypSpectrum = np.transpose(np.reshape(np.transpose(CLdata),(ylen,xlen ,len(wavelenght))), (0, 1, 2))
+#    process = psutil.Process(os.getpid())
+#    print("Memory usage : %d mo" %(process.memory_info().rss//2**20))
     
     #correct dead / wrong pixels
     hypSpectrum, hotpixels = correct_dead_pixel(hypSpectrum,tol=deadPixeltol)
@@ -74,17 +80,15 @@ def make_linescan(path,save=False,autoclose=False,log=False,threshold=0,deadPixe
         EnergyRange.sort()
         lidx = np.argmin(np.abs(wavelenght-EnergyRange[0]))
         ridx = np.argmin(np.abs(wavelenght-EnergyRange[1]))
-#        print(wavelenght[lidx],hypSpectrum[10,10,lidx])
         wavelenght = wavelenght[lidx:ridx]
+        hypSpectrum =hypSpectrum[:,:,lidx:ridx]# mask*hypSpectrum
 #        mask = np.zeros(hypSpectrum.shape)
 #        mask[:,:,lidx:ridx] = 1
-        hypSpectrum =hypSpectrum[:,:,lidx:ridx]# mask*hypSpectrum
-#        print(wavelenght[0],hypSpectrum[10,10,0])
     
     linescan = np.sum(hypSpectrum,axis=0)
     if normalise:
         linescan = linescan/np.max(linescan,axis=1,keepdims=True)
-#    linescan -= linescan.min()
+        
     xscale_CL,yscale_CL,acceleration,image = scaleSEMimage(filepath)
     if Linescan:
         fig,(ax,bx,cx)=plt.subplots(3,1,sharex=True,gridspec_kw={'height_ratios': [1,1, 3]})
@@ -96,13 +100,15 @@ def make_linescan(path,save=False,autoclose=False,log=False,threshold=0,deadPixe
     
     newX = np.linspace(xscale_CL[int(xcoord.min())],xscale_CL[int(xcoord.max())],len(xscale_CL))
     newY = np.linspace(yscale_CL[int(ycoord.min())],yscale_CL[int(ycoord.max())],len(yscale_CL))
+    X = np.linspace(np.min(newX),np.max(newX),hypSpectrum.shape[1])
+    Y = np.linspace(np.min(newY),np.max(newY),hypSpectrum.shape[0])
     nImage = np.array(image.crop((xcoord.min(),ycoord.min(),xcoord.max(),ycoord.max())))
     
     ax.imshow(nImage,cmap='gray',vmin=0,vmax=65535,extent=[np.min(newX),np.max(newX),np.max(newY),np.min(newY)])
     hypSpectrum = hypSpectrum-threshold
     hypSpectrum = hypSpectrum*(hypSpectrum>=0)
     hypimage=np.sum(hypSpectrum,axis=2)
-    hypimage -= hypimage.min() 
+    hypimage -= hypimage.min()
     if log:
         hypimage=np.log10(hypimage+1)
         linescan = np.log10(linescan+1)
@@ -110,7 +116,20 @@ def make_linescan(path,save=False,autoclose=False,log=False,threshold=0,deadPixe
     if Linescan:
 #        extent = [np.min(newX),np.max(newX),eV_To_nm/wavelenght.max(),eV_To_nm/wavelenght.min()]
 #        im=cx.imshow(linescan.T,cmap='jet',extent=extent)
-        im=cx.pcolormesh(np.linspace(np.min(newX),np.max(newX),hypSpectrum.shape[1]),eV_To_nm/wavelenght,linescan.T,cmap='jet')
+        im=cx.pcolormesh(X,eV_To_nm/wavelenght,linescan.T,cmap='jet')
+        def format_coord(x, y):
+            xarr = X
+            yarr = eV_To_nm/wavelenght
+            if ((x > xarr.min()) & (x <= xarr.max()) & 
+                (y > yarr.min()) & (y <= yarr.max())):
+                col = np.argmin(abs(xarr-x))#np.searchsorted(xarr, x)-1
+                row = np.argmin(abs(yarr-y))#np.searchsorted(yarr, y)-1
+                z = linescan.T[row, col]
+                return f'x={x:1.4f}, y={y:1.4f}, lambda={eV_To_nm/y:1.2f}, z={z:1.2e}   [{row},{col}]'
+            else:
+                return f'x={x:1.4f}, y={y:1.4f}, lambda={eV_To_nm/y:1.2f}'
+
+        cx.format_coord = format_coord
         cx.set_ylabel("Energy (eV)")
         cx.set_xlabel("distance (µm)")
         cx.set_aspect('auto')
@@ -144,15 +163,22 @@ def make_linescan(path,save=False,autoclose=False,log=False,threshold=0,deadPixe
             
     if autoclose==True:
         plt.close(fig)
-    return hypSpectrum, wavelenght
+    return hypSpectrum, wavelenght, X, Y
 def main():
     pass
     path = input("Enter the path of your file: ")
     path=path.replace('"','')
     path=path.replace("'",'')
 ##    path = r'C:/Users/sylvain.finot/Documents/data/2019-03-11 - T2597 - 5K/Fil3/TRCL-cw455nm/TRCL.dat'
-    global hyp, wavelenght
-    hyp, wavelenght = make_linescan(path,save=False,deadPixeltol=200,normalise=False,Linescan=True)
-    
+    global hyp, wavelenght, X, Y
+    hyp, wavelenght, X, Y = make_linescan(path,save=False,deadPixeltol=200,normalise=False,Linescan=True,EnergyRange=[4,5])
+
+
+#    profil = np.sum(hyp,axis=(0,-1))
+#    fig, ax = plt.subplots()
+#    ax.plot(X,profil)
+#    ax.set_title("Intensity profile between %.1d and %.1d eV"%(np.min(eV_To_nm/wavelenght),np.max(eV_To_nm/wavelenght)))
+#    ax.set_xlabel("X (µm)")
+#    ax.set_ylabel("Intensity (arb. units)")
 if __name__ == '__main__':
     main()

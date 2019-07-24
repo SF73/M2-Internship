@@ -6,15 +6,15 @@ Created on Tue Mar 19 13:57:46 2019
 """
 
 import numpy as np
+import numpy.ma as ma
 import matplotlib.pyplot as plt
 import os.path
-import time
 import scipy.constants as cst
 eV_To_nm = cst.c*cst.h/cst.e*1E9
 from detect_dead_pixels import correct_dead_pixel
 from SEMimage import scaleSEMimage
 from FileHelper import getListOfFiles
-from matplotlib.widgets import MultiCursor, Cursor
+from matplotlib.widgets import MultiCursor, Cursor, SpanSelector
 plt.style.use('Rapport')
 plt.rc('axes', labelsize=16)
 
@@ -90,13 +90,26 @@ def make_linescan(path,save=False,autoclose=False,log=False,threshold=0,deadPixe
     
     #correct dead / wrong pixels
     hypSpectrum, hotpixels = correct_dead_pixel(hypSpectrum,tol=deadPixeltol)
-    
+
     #reduce the spectrum if wanted
     if len(EnergyRange)==2:
-        lidx = np.argmin(np.abs(wavelenght-EnergyRange[0]))
-        ridx = np.argmin(np.abs(wavelenght-EnergyRange[1]))
-        wavelenght = wavelenght[lidx:ridx]
-        hypSpectrum = hypSpectrum[:,:,lidx:ridx]
+        
+        EnergyRange = eV_To_nm/np.array(EnergyRange) # en nm
+        EnergyRange.sort()
+        wavelenght = ma.masked_outside(wavelenght,*EnergyRange)
+        hypmask = np.resize(wavelenght.mask,hypSpectrum.shape)
+        hypSpectrum = ma.masked_array(hypSpectrum,mask=hypmask)
+#        lidx = np.argmin(np.abs(wavelenght-EnergyRange[0]))
+#        ridx = np.argmin(np.abs(wavelenght-EnergyRange[1]))
+#        hypmask = np.zeros(hypSpectrum.shape,dtype=bool)
+#        hypmask[:,:,indmin:indmax] = True
+#        specmask = np.zeros(wavelenght.shape,dtype=bool)
+#        specmask[lidx:ridx] = True
+    else:
+        wavelenght = ma.masked_array(wavelenght,mask=False)
+        hypmask = np.resize(wavelenght.mask,hypSpectrum.shape)
+        hypSpectrum = ma.masked_array(hypSpectrum,mask=hypmask)
+        
     
     linescan = np.sum(hypSpectrum,axis=0)
     if normalise:
@@ -111,11 +124,11 @@ def make_linescan(path,save=False,autoclose=False,log=False,threshold=0,deadPixe
     fig.subplots_adjust(top=0.9,bottom=0.12,left=0.15,right=0.82,hspace=0.1,wspace=0.05)
     newX = np.linspace(xscale_CL[int(xcoord.min())],xscale_CL[int(xcoord.max())],len(xscale_CL))
     newY = np.linspace(yscale_CL[int(ycoord.min())],yscale_CL[int(ycoord.max())],len(yscale_CL))
-    convX = np.linspace(newX.min(),newX.max(),hypSpectrum.shape[1])
-    convY = np.linspace(newY.min(),newY.max(),hypSpectrum.shape[0])
+    X = np.linspace(np.min(newX),np.max(newX),hypSpectrum.shape[1])
+    Y = np.linspace(np.min(newY),np.max(newY),hypSpectrum.shape[0])
     
     nImage = np.array(image.crop((xcoord.min(),ycoord.min(),xcoord.max(),ycoord.max())))
-    SEM = ax.imshow(nImage,cmap='gray',vmin=0,vmax=65535,extent=[np.min(newX),np.max(newX),np.max(newY),np.min(newY)])
+    ax.imshow(nImage,cmap='gray',vmin=0,vmax=65535,extent=[np.min(newX),np.max(newX),np.max(newY),np.min(newY)])
     hypSpectrum = hypSpectrum-threshold
     hypSpectrum = hypSpectrum*(hypSpectrum>=0)
     hypimage=np.sum(hypSpectrum,axis=2)
@@ -126,7 +139,20 @@ def make_linescan(path,save=False,autoclose=False,log=False,threshold=0,deadPixe
     lumimage = bx.imshow(hypimage,cmap='jet',extent=[np.min(newX),np.max(newX),np.max(newY),np.min(newY)])
     if Linescan:
 #        im=cx.imshow(linescan.T,cmap='jet',extent=[np.min(newX),np.max(newX),eV_To_nm/wavelenght.max(),eV_To_nm/wavelenght.min()])
-        im=cx.pcolormesh(np.linspace(np.min(newX),np.max(newX),hypSpectrum.shape[1]),eV_To_nm/wavelenght,linescan.T,cmap='jet')
+        im=cx.pcolormesh(X,eV_To_nm/wavelenght,linescan.T,cmap='jet')
+        def format_coord(x, y):
+            xarr = X
+            yarr = eV_To_nm/wavelenght
+            if ((x > xarr.min()) & (x <= xarr.max()) & 
+                (y > yarr.min()) & (y <= yarr.max())):
+                col = np.argmin(abs(xarr-x))#np.searchsorted(xarr, x)-1
+                row = np.argmin(abs(yarr-y))#np.searchsorted(yarr, y)-1
+                z = linescan.T[row, col]
+                return f'x={x:1.4f}, y={y:1.4f}, lambda={eV_To_nm/y:1.2f}, z={z:1.2e}   [{row},{col}]'
+            else:
+                return f'x={x:1.4f}, y={y:1.4f}, lambda={eV_To_nm/y:1.2f}'
+
+        cx.format_coord = format_coord
         cx.set_ylabel("Energy (eV)")
         cx.set_xlabel("distance (µm)")
         cx.set_aspect('auto')
@@ -163,30 +189,59 @@ def make_linescan(path,save=False,autoclose=False,log=False,threshold=0,deadPixe
     else:
         spec_fig, spec_ax = plt.subplots()
         spec_data, = spec_ax.plot(eV_To_nm/wavelenght,np.zeros(wavelenght.shape[0]))
+        spec_ax.set_ylim((0,hypSpectrum.max()))
         if Linescan:    
-            multi = MyMultiCursor(fig.canvas,(ax, bx,cx), color='r',lw=1,horizOn=[ax,bx], vertOn=[ax,bx,cx],useblit=True)#, lw=1, horizOn=[ax,bx], vertOn=[ax,bx,cx])
+#            multi = MyMultiCursor(fig.canvas,(ax, bx,cx), color='r',lw=1,horizOn=[ax,bx], vertOn=[ax,bx,cx],useblit=True)#, lw=1, horizOn=[ax,bx], vertOn=[ax,bx,cx])
 #            multi = Cursor(bx, color='r',lw=1,useblit=True)#, lw=1, horizOn=[ax,bx], vertOn=[ax,bx,cx])
+            multi = MultiCursor(fig.canvas, (ax, bx), color='r', lw=1,horizOn=True, vertOn=True)
         def onclick(event):
-            x = event.xdata
-            y = event.ydata
-            indx = np.argmin(abs(x-convX))
-            indy=np.argmin(abs(y-convY))
-#            spec_data.set_xdata(
-            spec_data.set_ydata(hypSpectrum[indy,indx])
-            spec_ax.relim()
-            spec_ax.autoscale_view(scalex=False)
-            spec_fig.canvas.draw_idle()
-            plt.draw()
+            print(event)
+            if event.dblclick:
+                cursor.active = not(cursor.active)
+            elif cursor.active:
+                x = event.xdata
+                y = event.ydata
+                if ((event.inaxes is not None) and (x > X.min()) & (x <= X.max()) & 
+                    (y > Y.min()) & (y <= Y.max())):
+                    indx = np.argmin(abs(x-X))
+                    indy=np.argmin(abs(y-Y))
+                    spec_data.set_ydata(hypSpectrum[indy,indx])
+                    spec_fig.canvas.draw_idle()
+        def onselect(ymin, ymax,wavelenght,hypSpectrum):
+#            indmin = np.argmin(abs(eV_To_nm/wavelenght-ymin))
+#            indmax = np.argmin(abs(eV_To_nm/wavelenght-ymax))
+#        
+##            thisx = x[indmin:indmax]
+#            if abs(indmax-indmin)<1:return
+#            indmin, indmax = np.sort((indmax,indmin))
+#            thiswave = wavelenght[indmin:indmax]
+#            mask = np.zeros(hypSpectrum.shape)
+#            mask[:,:,indmin:indmax] = 1
+#            hypimage=np.sum(hypSpectrum*mask,axis=2)
+#            hypimage -= hypimage.min()
+#            lumimage.set_array(hypimage)
+            wavelenght = ma.masked_outside(wavelenght,eV_To_nm/ymin,eV_To_nm/ymax)
+            hypmask = np.resize(wavelenght.mask,hypSpectrum.shape)
+            hypSpectrum = ma.masked_array(hypSpectrum,mask=hypmask)
+            hypimage=np.sum(hypSpectrum,axis=2)
+            hypimage -= hypimage.min()
+            lumimage.set_array(hypimage)
+            cx.set_ylim(eV_To_nm/wavelenght.max(), eV_To_nm/wavelenght.min())
+            fig.canvas.draw_idle()
+        span = None
+        if Linescan:
+            span = SpanSelector(cx, lambda x: onselect(x, wavelenght,hypSpectrum), 'vertical', useblit=True,
+                                rectprops=dict(alpha=0.5, facecolor='red'))
         fig.canvas.mpl_connect('button_press_event', onclick)
-        return spec_fig, spec_ax, multi
+        return hypSpectrum, wavelenght, spec_fig, spec_ax, multi, span
 
 def main():
     path = input("Enter the path of your file: ")
     path=path.replace('"','')
     path=path.replace("'",'')
-    global spec_fig,spec_ax,cursor
 #    path = r'C:/Users/sylvain.finot/Documents/data/2019-03-11 - T2597 - 5K/Fil3/TRCL-cw455nm/TRCL.dat'
-    cursor = make_linescan(path,save=False,deadPixeltol=200,normalise=False,Linescan=True)
+    global hyp, wavelenght,spec_fig,spec_ax,cursor, span
+    hyp, wavelenght, spec_fig, spec_ax, cursor, span = make_linescan(path,save=False,deadPixeltol=200,normalise=False,Linescan=True)
     
 if __name__ == '__main__':
     main()
